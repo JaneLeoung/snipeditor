@@ -8,7 +8,7 @@ from PIL import Image, ImageTk, ImageGrab, ImageDraw, ImageFont
 
 APP_TITLE = 'Snip Annotate Tool'
 RECT_WIDTH_DEFAULT = 3
-MAX_PREVIEW_SIZE = (1400, 900)
+MAX_PREVIEW_SIZE = (1600, 900)
 TEXT_SIZE_DEFAULT = 24
 RECT_COLOR_DEFAULT = '#ff0000'
 TEXT_COLOR_DEFAULT = '#ff0000'
@@ -84,12 +84,19 @@ def get_windows_display_scale_percent():
 
 def get_preview_bounds(root):
     try:
-        screen_w = max(900, root.winfo_screenwidth() - 80)
-        screen_h = max(600, root.winfo_screenheight() - 180)
-        return min(MAX_PREVIEW_SIZE[0], screen_w), min(MAX_PREVIEW_SIZE[1], screen_h)
+        root.update_idletasks()
+
+        w = root.winfo_width()
+        h = root.winfo_height()
+
+        # leave dynamic space for UI (safer)
+        available_w = max(300, w - 40)
+        available_h = max(300, h - 180)
+
+        return available_w, available_h
+
     except Exception:
         return MAX_PREVIEW_SIZE
-
 
 def fit_size(width, height, max_w, max_h):
     scale = min(max_w / width, max_h / height, 1.0)
@@ -281,8 +288,10 @@ class Editor(tk.Frame):
         self.master.bind('<Escape>', lambda e: self.master.destroy())
         self.master.bind('<Control-q>', lambda e: self.master.destroy())
         self.master.bind('<Control-n>', lambda e: self.start_snip())
+        self.master.bind('<Configure>', self.on_window_resize)
+        self._resize_job = None
 
-        self.master.geometry('1400x950')
+        self.master.geometry('1600x1000')
         self.apply_display_scale()
 
         # Auto start snip after app opens.
@@ -646,10 +655,20 @@ class Editor(tk.Frame):
         self.canvas.create_image(0, 0, anchor='nw', image=self.preview_photo)
 
         self.canvas.config(
-            scrollregion=(0, 0, self.preview_image.width, self.preview_image.height)
+            scrollregion=(0, 0, self.preview_image.width, self.preview_image.height),
+            width=pw,
+            height=ph
         )
 
-        self.redraw_active_text_entry()
+
+    def on_window_resize(self, event):
+        if event.widget != self.master:
+            return
+
+        if self._resize_job is not None:
+            self.master.after_cancel(self._resize_job)
+
+        self._resize_job = self.master.after(150, self.refresh_canvas)
 
     def render_result_image(self, include_edit_preview=False):
         img = self.image.copy()
