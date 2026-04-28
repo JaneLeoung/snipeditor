@@ -1,6 +1,6 @@
 Usage
 
-Run t./build_windows_exe.sh in Git Bash from the project folder:
+Run ./build_windows_exe.sh in Git Bash from the project folder:
 
 bash build_windows_exe.sh
 
